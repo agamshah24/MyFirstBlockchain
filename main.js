@@ -18,6 +18,8 @@ class Block {
         this.previousHash = previousHash;
         // Hash of currenct block
         this.hash = this.calculateHash();
+        // Nonce will be useful to generate the new hash for every block
+        this.nonce = 0;
     }
 
     /* 
@@ -26,6 +28,22 @@ class Block {
     calculateHash(){
         // We are going to use SHA-256 as a hash function
         return SHA256(this.index + this.previousHash + this.timestamp + JSON.stringify(this.data)).toString();
+    }
+
+    // To create our block with a certain amount of zero's
+    mineBlock(difficulty) {
+        // write a loop that keeps running until our hash starts with enough zero's
+        // Let say for example our hash difficulty is 5 then loop will run until the first 5 character of hash value will be equal to 00000
+        while (this.hash.substr(0, difficulty) !== Array(difficulty + 1).join(0)) {
+            this.hash = this.calculateHash();
+        }
+
+        // print the hash of the block
+        console.log("Block mine: " + this.hash);
+
+        // The problem over here is that the hash of our block won't change if we don't change the contents of our block,
+        // so our above loop will become endless loop.
+
     }
 }
 
