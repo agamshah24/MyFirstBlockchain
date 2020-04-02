@@ -19,6 +19,7 @@ class Block {
         // Hash of currenct block
         this.hash = this.calculateHash();
         // Nonce will be useful to generate the new hash for every block
+        // this the random number that doesn't have anything to do with your block, but it can be changed something random.
         this.nonce = 0;
     }
 
@@ -27,7 +28,7 @@ class Block {
     */
     calculateHash(){
         // We are going to use SHA-256 as a hash function
-        return SHA256(this.index + this.previousHash + this.timestamp + JSON.stringify(this.data)).toString();
+        return SHA256(this.index + this.previousHash + this.timestamp + JSON.stringify(this.data) + this.nonce).toString();
     }
 
     // To create our block with a certain amount of zero's
@@ -35,6 +36,7 @@ class Block {
         // write a loop that keeps running until our hash starts with enough zero's
         // Let say for example our hash difficulty is 5 then loop will run until the first 5 character of hash value will be equal to 00000
         while (this.hash.substr(0, difficulty) !== Array(difficulty + 1).join(0)) {
+            this.nonce++;
             this.hash = this.calculateHash();
         }
 
@@ -44,6 +46,9 @@ class Block {
         // The problem over here is that the hash of our block won't change if we don't change the contents of our block,
         // so our above loop will become endless loop.
 
+        // Ok, we might need to think that what can we change from our Block contents (Block class's property).
+        // We cannot change any of the current property but we can add a new property called "nonce". 
+
     }
 }
 
@@ -51,9 +56,8 @@ class Block {
 class Blockchain {
     constructor() {
         // To create array of blocks on blockchain
-        this.chain = [this.createGenesisBlock()];
-        // To Create Genesis block
-
+        this.chain = [this.createGenesisBlock()]; // To Create Genesis block
+        this.difficulty = 5;
     }
 
     /*
@@ -78,7 +82,9 @@ class Blockchain {
        newBlock.previousHash = this.getLatestBlock().hash;
        // As here we have changed the block property we need to re-calculate the hash of this block
        // IMP: whenever you change the property of any block make sure you will re-calculate it's HASH. 
-       newBlock.hash = newBlock.calculateHash();
+       // Now insted of calculating the Hash directly we use the mineBlock method here,
+       // newBlock.hash = newBlock.calculateHash();
+       newBlock.mineBlock(this.difficulty);
        // Add the newBlock in the chain
        this.chain.push(newBlock);
        // In reality you can't add a new block this super easily because, there are numerous checks in place.
@@ -111,10 +117,14 @@ class Blockchain {
 // To test the block chain
 // Create an instance of the Blockchain.
 let agamCoin = new Blockchain();
+
 // add blocks in the blockchain
+console.log('Mining block 1....');
 agamCoin.addBlock(new Block(1, "2020/03/22", {amount: 4}));
+console.log('Mining block 2....');
 agamCoin.addBlock(new Block(2, "2020/03/23", {amount: 10}));
 
+/*
 // To verify the integrity of the blockchain
 console.log('Is blockchain valid? ' + agamCoin.isChainValid());
 
@@ -126,4 +136,4 @@ console.log('Is blockchain valid? ' + agamCoin.isChainValid());
 
 // For output
 // console.log(JSON.stringify(agamCoin,null,4));
-
+*/
