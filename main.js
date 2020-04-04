@@ -6,14 +6,37 @@
 
 const SHA256 = require('crypto-js/sha256');
 
+// 1. To support multiple trasaction we will replace data with trasactions(Array) in the Block class.
+// 2. Remove the index from the Block class because in blockchain the order of block is determine by their position in the array and not by the index that we can pass.
+// 3. Remove the index parmeter passed in the Genisis block.
+// 4. Create a Transaction class.
+// 5. We need a place to store pending transactions.
+    // We need a place to store pending transctions becuase we only create block on a specific time interval, in bitcoin case the proof-of-work algorithm makes sure that there is only one block created at every 10 minutes. All the transactions made between the 
+// 6. We need a new method to mine a new block for the pending transactions.
+// 7. We need to add mining rewards.
+
+
+
+/* 
+    Create a Transaction class
+*/
+class Transaction {
+    constructor(fromAddress, toAddress, amount) {
+        this.fromAddress = fromAddress;
+        this.toAddress = toAddress;
+        this.amount = amount;
+        //console.debug('Transaction is created with: ', fromAddress, toAddress, amount);
+    }
+}
+
 class Block {
-    constructor(index, timestamp, data, previousHash='') {
-        // index of block in blockchain
-        this.index = index;
+    // To support multiple trasaction we will replace data with trasactions(Array).
+    // Remove the index because in blockchain the order of block is determine by their position in the array and not by the index that we can pass.
+    constructor(timestamp, transactions, previousHash='') {
         // the time when block is created
         this.timestamp = timestamp;
-        // Data to be stored in block
-        this.data = data;
+        // transactions array to be stored in block
+        this.transactions = transactions;
         // Hash of previous block
         this.previousHash = previousHash;
         // Hash of currenct block
@@ -57,14 +80,18 @@ class Blockchain {
     constructor() {
         // To create array of blocks on blockchain
         this.chain = [this.createGenesisBlock()]; // To Create Genesis block
-        this.difficulty = 5;
+        this.difficulty = 3;
+        // Used for pending transactions
+        this.pendingTransactions = [];
+        // To control how much coin the miners get as a reward
+        this.miningReward = 100; // Miners will get 100 coins if they successfully mine the block
     }
 
     /*
         The first block (Genesis block) is always created manually. 
     */
    createGenesisBlock() {
-       return new Block(0, '2020/03/21', "Genesis Block", "0");
+       return new Block('2020/03/21', "Genesis block", "0");
    }
 
    /*
@@ -74,20 +101,59 @@ class Blockchain {
        return this.chain[this.chain.length - 1];
    }
 
+   minePendingTransactions(miningRewardAddress) {
+       // miningRewardAddress = miners address
+       // create a block
+       let block = new Block(Date.now(), this.pendingTransactions, this.getLatestBlock.hash);
+       // mine the block
+       block.mineBlock(this.difficulty);
+
+       console.log('Block successfully mined!');
+       // add the block to blockchain
+       this.chain.push(block);
+
+       // console.debug('Added to the Block with transaction : ', block);
+
+       // reset the pending trasaction array
+       this.pendingTransactions = [
+           // Also sent the rewards to the miner
+           // After the block has been mined, we created this transaction for the miner's reward.
+           // so the mining reward will only be sent when the next block is mines.
+           new Transaction(null, miningRewardAddress, this.miningReward)
+       ];
+    }
+
    /* 
-        To add a new block in the blockchain
+    To add the transaction into the pending trasaction list
+    */
+   createTransaction(transaction) {
+       this.pendingTransactions.push(transaction);
+   }
+
+   /* 
+    To check the balance of an address,
+        - Many people thinks that if you send some bitcoins around they actually move away from your wallets balance to someone else's balance
+        - But in reality, you don't have a balance. 
+        - The transaction is just stored on the blockchain and  if you ask for your balance you have to go through all the transactions that involves your address and calculate it that way.
    */
-   addBlock(newBlock) {
-       // First add the previous block's hash
-       newBlock.previousHash = this.getLatestBlock().hash;
-       // As here we have changed the block property we need to re-calculate the hash of this block
-       // IMP: whenever you change the property of any block make sure you will re-calculate it's HASH. 
-       // Now insted of calculating the Hash directly we use the mineBlock method here,
-       // newBlock.hash = newBlock.calculateHash();
-       newBlock.mineBlock(this.difficulty);
-       // Add the newBlock in the chain
-       this.chain.push(newBlock);
-       // In reality you can't add a new block this super easily because, there are numerous checks in place.
+   getBalanceOfAddress(address) {
+       let balance = 0;
+       // Tranvers all the blocks on the blockchain
+       for(const block of this.chain) {
+        // Traverse each transctions of the block
+        for(const trans of block.transactions) {
+               // if the given address found in fromAddress of the transaction, it means you have sent the money to someone.
+               if (trans.fromAddress === address) {
+                   balance -= trans.amount;
+               }
+               // if the given address found in toAddress of the transaction, it means you have received the money from someone.
+               if(trans.toAddress === address) {
+                   balance += trans.amount;
+               } 
+           }
+       }
+       // return the calculated transaction
+       return balance;
    }
 
    /* 
@@ -118,22 +184,27 @@ class Blockchain {
 // Create an instance of the Blockchain.
 let agamCoin = new Blockchain();
 
-// add blocks in the blockchain
-console.log('Mining block 1....');
-agamCoin.addBlock(new Block(1, "2020/03/22", {amount: 4}));
-console.log('Mining block 2....');
-agamCoin.addBlock(new Block(2, "2020/03/23", {amount: 10}));
+// User's address
+let rushabhAddress = 'rushabhAddress';
+let jainamAddress = 'jainamAddress';
+let ankitAddress = 'ankitAddress';
 
-/*
-// To verify the integrity of the blockchain
-console.log('Is blockchain valid? ' + agamCoin.isChainValid());
+// miners address
+let nishithAddress = 'nishithAddress';
 
-// tamper our blockchain 
-agamCoin.chain[1].data = {amount: 100};
-agamCoin.chain[1].hash = agamCoin.chain[1].calculateHash();
-// Re-check the integrity of the blockchain
-console.log('Is blockchain valid? ' + agamCoin.isChainValid());
+// create the transaction
+agamCoin.createTransaction(new Transaction(rushabhAddress, jainamAddress, 200));
+agamCoin.createTransaction(new Transaction(ankitAddress, jainamAddress, 50));
+agamCoin.createTransaction(new Transaction(ankitAddress, rushabhAddress, 1150));
 
-// For output
-// console.log(JSON.stringify(agamCoin,null,4));
-*/
+// let start mining the transactions
+console.log('\n Starting the miner....');
+agamCoin.minePendingTransactions(nishithAddress);
+
+// console.log('\n Balance of nishith (miner) is : ', agamCoin.getBalanceOfAddress(nishithAddress))
+
+// let start mining again, remember the miner will get it's mining reward in the when the next block is mines.
+console.log('\n Starting the miner again....');
+agamCoin.minePendingTransactions(nishithAddress);
+
+console.log('\n Balance of nishith (miner) is : ', agamCoin.getBalanceOfAddress(nishithAddress));
