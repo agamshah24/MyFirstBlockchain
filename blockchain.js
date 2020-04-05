@@ -29,8 +29,11 @@ class Blockchain {
 
    minePendingTransactions(miningRewardAddress) {
        // miningRewardAddress = miners address
+       const rewardTx = new Transaction(null, miningRewardAddress, this.miningReward);
+       this.pendingTransactions.push(rewardTx);
+
        // create a block
-       let block = new Block(Date.now(), this.pendingTransactions, this.getLatestBlock.hash);
+       let block = new Block(Date.now(), this.pendingTransactions, this.getLatestBlock().hash);
        // mine the block
        block.mineBlock(this.difficulty);
 
@@ -40,6 +43,8 @@ class Blockchain {
 
        // console.debug('Added to the Block with transaction : ', block);
 
+       this.pendingTransactions = [];
+       /*
        // reset the pending trasaction array
        this.pendingTransactions = [
            // Also sent the rewards to the miner
@@ -47,12 +52,23 @@ class Blockchain {
            // so the mining reward will only be sent when the next block is mines.
            new Transaction(null, miningRewardAddress, this.miningReward)
        ];
+       */
     }
 
    /* 
     To add the transaction into the pending trasaction list
     */
-   createTransaction(transaction) {
+   addTransaction(transaction) {
+       // check if from and to address are not empty
+       if (!transaction.fromAddress || !transaction.toAddress) {
+           throw new Error('Transaction must include from and to address.');
+       }
+
+       // Validate the trasaction
+       if (!transaction.isValid()) {
+           throw new Error('Cannot add invalid transaction to chain.');           
+       }
+
        this.pendingTransactions.push(transaction);
    }
 
@@ -66,15 +82,15 @@ class Blockchain {
        let balance = 0;
        // Tranvers all the blocks on the blockchain
        for(const block of this.chain) {
-        // Traverse each transctions of the block
-        for(const trans of block.transactions) {
+           // Traverse each transctions of the block
+           for(const trans of block.transactions) {
                // if the given address found in fromAddress of the transaction, it means you have sent the money to someone.
                if (trans.fromAddress === address) {
-                   balance -= trans.amount;
+                balance -= trans.amount;
                }
                // if the given address found in toAddress of the transaction, it means you have received the money from someone.
                if(trans.toAddress === address) {
-                   balance += trans.amount;
+                balance += trans.amount;
                } 
            }
        }
@@ -91,13 +107,21 @@ class Blockchain {
        for(let i = 1; i < this.chain.length; i++) {
            const currentBlock = this.chain[i];
            const previousBlock = this.chain[i - 1];
+           
+           // Verify if all the transactions are valid in the current block
+           if(!currentBlock.hasValidTransactions()) {
+               return false;
+           }
 
            // Compare the current block's hash with recalcualting it's hash
            if (currentBlock.hash !== currentBlock.calculateHash()) {
                return false;
            } 
+
            // Compare the currenct block's previous hash with previous block's hash 
            else if (currentBlock.previousHash != previousBlock.hash) {
+               console.log("currentBlock previousHash: ", currentBlock);
+               console.log("previousBlock previousHash: ", previousBlock);
                return false;
            }
        }

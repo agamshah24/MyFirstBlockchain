@@ -45,6 +45,16 @@ class Block {
         // We cannot change any of the current property but we can add a new property called "nonce". 
 
     }
+
+    // Validate all the transaction of this block
+    hasValidTransactions() {
+        for (const tx of this.transactions) {
+            if(!tx.isValid()) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 // allows the export of the Transaction class
